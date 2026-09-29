@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Indian Stock Market Analyzer & Prediction System | NSE Quant Pipeline</title>
+  <meta name="description" content="Quantitative trading pipeline, machine learning directional probability, safety screening filters, and dynamic ATR trade plans for Indian Equities (NSE/BSE).">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Application Stylesheet -->
+  <link rel="stylesheet" href="/static/css/style.css">
+
+  <!-- TradingView Lightweight Charts & Chart.js CDNs -->
+  <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <div class="app-container">
+
+    <!-- ==========================================================================
+         TOP HEADER & MARKET OVERVIEW BAR
+         ========================================================================== -->
+    <header class="app-header">
+      <div class="brand-wrapper">
+        <div class="brand-icon">📈</div>
+        <div class="brand-info">
+          <h1>NSE Quant Engine</h1>
+          <div class="tagline">Indian Equities ML Prediction & Multi-Factor Screener</div>
+        </div>
+      </div>
+
+      <!-- Live Market Regime & Benchmark Tickers -->
+      <div class="market-ticker-strip">
+        <div class="ticker-chip" id="chip-nifty">
+          <span class="name">NIFTY 50</span>
+          <span class="price" id="nifty-price">Rs. 24,500.00</span>
+          <span class="change positive" id="nifty-change">+0.45%</span>
+        </div>
+        <div class="ticker-chip" id="chip-banknifty">
+          <span class="name">BANK NIFTY</span>
+          <span class="price" id="bank-price">Rs. 52,200.00</span>
+          <span class="change positive" id="bank-change">+0.38%</span>
+        </div>
+        <div class="regime-badge" id="market-regime">
+          <span class="pulse-dot"></span> REGIME: RISK-ON
+        </div>
+      </div>
+    </header>
+
+    <!-- ==========================================================================
+         DAILY AUTOMATED UPDATE STATUS & SCHEDULE BAR
+         ========================================================================== -->
+    <div class="daily-status-bar glass-card">
+      <div class="status-left">
+        <div class="status-item">
+          <span class="status-icon">🕒</span>
+          <div>
+            <div class="status-label">LAST DAILY UPDATE</div>
+            <div class="status-val" id="daily-last-updated">Checking schedule...</div>
+          </div>
+        </div>
+        <div class="status-item">
+          <span class="status-icon">⏳</span>
+          <div>
+            <div class="status-label">NEXT SCHEDULED SCAN</div>
+            <div class="status-val" id="daily-next-scan">Today 15:45 IST (After Market Close)</div>
+          </div>
+        </div>
+        <div class="status-item">
+          <span class="status-icon">🟢</span>
+          <div>
+            <div class="status-label">MARKET STATUS</div>
+            <div class="status-val" id="daily-market-status">LIVE (09:15 - 15:30 IST)</div>
+          </div>
+        </div>
+      </div>
+      <div class="status-right">
+        <div class="daily-badge">
+          <span class="pulse-dot"></span> DAILY AUTO-SCAN ACTIVE
+        </div>
+        <button class="btn-primary btn-sm" id="btn-run-daily-update">
+          <span id="daily-btn-icon">⚡</span> Run Daily Scan Now
+        </button>
+      </div>
+    </div>
+
+    <!-- ==========================================================================
+         MAIN NAVIGATION TABS
+         ========================================================================== -->
+    <nav class="nav-tabs" role="tablist">
+      <button class="tab-btn active" data-tab="daily" id="tab-btn-daily">
+        <span>⭐</span> Daily Investment Picks
+      </button>
+      <button class="tab-btn" data-tab="screener" id="tab-btn-screener">
+        <span>⚡</span> Market Screener & Universe
+      </button>
+      <button class="tab-btn" data-tab="analyzer" id="tab-btn-analyzer">
+        <span>🔍</span> Deep Dive Analyzer & Trade Plan
+      </button>
+      <button class="tab-btn" data-tab="backtest" id="tab-btn-backtest">
+        <span>📊</span> Historical Strategy Backtest
+      </button>
+      <button class="tab-btn" data-tab="architecture" id="tab-btn-architecture">
+        <span>🧠</span> Quant System Architecture
+      </button>
+    </nav>
+
+    <!-- ==========================================================================
+         TAB 1: ⭐ DAILY INVESTMENT SUGGESTIONS & RECOMMENDATIONS
+         ========================================================================== -->
+    <section class="tab-content active" id="tab-daily">
+      <!-- Recommendations Top Header Card -->
+      <div class="suggestions-header-card">
+        <div>
+          <h2 class="section-title"><span>⭐</span> Companies To Invest In Today</h2>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
+            Automated daily selection synthesized from Machine Learning directional upside, 50/200 EMA structural trends, and fundamental moat.
+          </p>
+        </div>
+        <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+          <div class="capital-input-group">
+            <label for="portfolio-capital-input">My Portfolio Base:</label>
+            <span>₹</span>
+            <input type="number" id="portfolio-capital-input" value="100000" step="10000" min="10000">
+          </div>
+          <div class="filter-pills" id="suggestion-filter-pills">
+            <button class="filter-pill active" data-sugg-filter="all">All Top Picks</button>
+            <button class="filter-pill" data-sugg-filter="compounders">🏆 Long-Term (6-12M)</button>
+            <button class="filter-pill" data-sugg-filter="swings">🚀 Swings (1-4W)</button>
+            <button class="filter-pill" data-sugg-filter="dips">💎 Value Dips (1-3M)</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Daily Summary Alert Banner -->
+      <div class="glass-card" style="padding: 0.85rem 1.25rem; margin-bottom: 1.25rem; border-left: 3px solid #10b981; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.75rem;">
+        <div style="display: flex; align-items: center; gap: 0.65rem;">
+          <span style="font-size: 1.2rem;">💡</span>
+          <span style="font-size: 0.82rem; color: #cbd5e1;" id="daily-summary-text">
+            Loading automated daily market scan and investment thesis...
+          </span>
+        </div>
+        <div style="font-size: 0.75rem; color: #38bdf8; font-family: var(--font-mono);" id="daily-scan-timestamp">
+          Updated: Today
+        </div>
+      </div>
+
+      <!-- Loading State for Daily Suggestions -->
+      <div class="loader-container" id="daily-loader" style="display: none;">
+        <div class="spinner"></div>
+        <span>Generating today's machine learning investment recommendations...</span>
+      </div>
+
+      <!-- Suggestions Cards Grid -->
+      <div class="suggestions-grid" id="daily-suggestions-container">
+        <!-- Dynamically rendered by app.js -->
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         TAB 2: LIVE QUANTITATIVE SCREENER & UNIVERSE MATRIX
+         ========================================================================== -->
+    <main class="tab-content" id="tab-screener">
+      <!-- Section Title & Controls -->
+      <div class="screener-header-row">
+        <div>
+          <h2 class="section-title"><span>🎯</span> Market Universe Screener</h2>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
+            Filter 130+ Indian equities by Uptrend (Price > 50 & 200 EMA), Liquidity (> Rs. 8 Cr Turnover), and LightGBM Directional Probability.
+          </p>
+        </div>
+        <div class="screener-controls">
+          <select class="select-universe" id="screener-universe-select" title="Select stock universe to scan">
+            <option value="nifty50">Nifty 50 Top Bluechips (50)</option>
+            <option value="nifty100">Nifty 100 Large & Midcaps (100)</option>
+            <option value="midcaps">High-Growth Midcaps & Smallcaps</option>
+            <option value="defense_psu">Defense, Railways & PSU Giants</option>
+            <option value="banking_finance">Banking & Financial Services</option>
+            <option value="all">Full 130+ Market Universe</option>
+          </select>
+          <div class="filter-pills">
+            <button class="filter-pill active" data-filter="top-buys">Top Recommendations</button>
+            <button class="filter-pill" data-filter="high-prob">High Prob (>60%)</button>
+            <button class="filter-pill" data-filter="all">All Screened</button>
+          </div>
+          <button class="btn-primary" id="btn-refresh-screener">
+            <span>⟳</span> Re-scan Universe
+          </button>
+        </div>
+      </div>
+
+      <!-- Top K Highlight Cards Grid -->
+      <div class="top-candidates-grid" id="top-buys-container">
+        <!-- Dynamically populated by app.js -->
+      </div>
+
+      <!-- Loading State for Screener -->
+      <div class="loader-container" id="screener-loader" style="display: none;">
+        <div class="spinner"></div>
+        <span>Running quantitative multi-factor screening across NSE universe...</span>
+      </div>
+
+      <!-- Screener Data Table -->
+      <div class="glass-card" style="margin-top: 1.5rem;">
+        <h3 style="font-size: 1.05rem; margin-bottom: 1rem; color: #cbd5e1; display:flex; align-items:center; gap: 0.5rem;">
+          <span>📋</span> Universe Ranking Matrix
+        </h3>
+        <div class="table-responsive">
+          <table class="screener-table">
+            <thead>
+              <tr>
+                <th>Ticker / Name</th>
+                <th>CMP (Rs.)</th>
+                <th>1D Return</th>
+                <th>ML Conviction</th>
+                <th>Trend Safety</th>
+                <th>20D Turnover</th>
+                <th>Stop-Loss (1.5x ATR)</th>
+                <th>Target 1 (+5-8%)</th>
+                <th>Risk : Reward</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="screener-table-body">
+              <!-- Dynamically rendered -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+
+    <!-- ==========================================================================
+         TAB 3: DEEP DIVE ANALYZER & DYNAMIC TRADE PLAN
+         ========================================================================== -->
+    <section class="tab-content" id="tab-analyzer">
+      
+      <!-- Search & Quick Chips Controls -->
+      <div class="analyzer-top-controls">
+        <div class="search-box-wrapper">
+          <input type="text" class="input-search" id="stock-search-input" placeholder="Search any company (e.g. Tata, Zomato, Reliance, Suzlon, BHEL, IRFC)..." value="TCS.NS" autocomplete="off">
+          <button class="btn-primary" id="btn-search-stock">Analyze</button>
+          <!-- Dynamic Autocomplete Dropdown -->
+          <div class="search-dropdown" id="search-autocomplete-dropdown"></div>
+        </div>
+        <div class="quick-chips">
+          <span style="font-size: 0.78rem; color: var(--text-muted); align-self: center;">Popular:</span>
+          <button class="chip-btn" data-symbol="RELIANCE.NS">RELIANCE</button>
+          <button class="chip-btn" data-symbol="TCS.NS">TCS</button>
+          <button class="chip-btn" data-symbol="HDFCBANK.NS">HDFC BANK</button>
+          <button class="chip-btn" data-symbol="INFY.NS">INFOSYS</button>
+          <button class="chip-btn" data-symbol="TATAMOTORS.NS">TATA MOTORS</button>
+          <button class="chip-btn" data-symbol="HAL.NS">HAL</button>
+          <button class="chip-btn" data-symbol="ZOMATO.NS">ZOMATO</button>
+          <button class="chip-btn" data-symbol="SUZLON.NS">SUZLON</button>
+          <button class="chip-btn" data-symbol="BEL.NS">BEL</button>
+          <button class="chip-btn" data-symbol="IRFC.NS">IRFC</button>
+        </div>
+      </div>
+
+      <!-- Loading State for Analyzer -->
+      <div class="loader-container" id="analyzer-loader" style="display: none;">
+        <div class="spinner"></div>
+        <span>Crunching technical indicators and running LightGBM inference...</span>
+      </div>
+
+      <div id="analyzer-content">
+        <!-- Hero Stock Overview Card -->
+        <div class="stock-hero-card">
+          <div class="hero-identity">
+            <h2 id="hero-symbol">TCS.NS</h2>
+            <div class="hero-meta">
+              <span id="hero-name" style="font-weight: 600; color: #cbd5e1;">Tata Consultancy Services</span>
+              <span>•</span>
+              <span id="hero-sector">Information Technology</span>
+            </div>
+          </div>
+          <div class="hero-price-block">
+            <div class="hero-price-val" id="hero-price">Rs. 2,082.00</div>
+            <div class="hero-price-chg positive" id="hero-change">+0.85% (Today)</div>
+          </div>
+        </div>
+
+        <!-- 2-Column Main Workspace -->
+        <div class="analyzer-grid">
+          
+          <!-- Column 1: Financial Interactive Candlestick & RSI Charts -->
+          <div class="glass-card chart-container-card">
+            <div class="chart-header">
+              <h3 style="font-size: 1rem; color: #ffffff;">Candlestick & Technical Overlays</h3>
+              <div class="chart-legend">
+                <span><span class="legend-dot" style="background:#38bdf8;"></span>EMA 20</span>
+                <span><span class="legend-dot" style="background:#f59e0b;"></span>EMA 50</span>
+                <span><span class="legend-dot" style="background:#a855f7;"></span>EMA 200</span>
+                <span><span class="legend-dot" style="background:#10b981;"></span>Target</span>
+                <span><span class="legend-dot" style="background:#f43f5e;"></span>Stop Loss</span>
+              </div>
+            </div>
+
+            <!-- Candlestick Container -->
+            <div id="chart-main"></div>
+
+            <!-- RSI Container -->
+            <div style="margin-top: 0.5rem;">
+              <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; margin-bottom: 0.25rem;">
+                MOMENTUM OSCILLATOR: RSI (14-PERIOD WILDER SMOOTHED)
+              </div>
+              <div id="chart-sub-rsi"></div>
+            </div>
+          </div>
+
+          <!-- Column 2: ML Conviction Gauge & Actionable Trade Plan Card -->
+          <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+            
+            <!-- Trade Setup Card -->
+            <div class="glass-card trade-setup-card">
+              <div class="setup-title">
+                <span style="font-size: 0.95rem; font-weight: 700; color: #ffffff;">⚡ Actionable Trade Setup</span>
+                <span class="badge-pill" id="ml-conviction-badge">BUY CANDIDATE</span>
+              </div>
+
+              <!-- Directional Probability Gauge -->
+              <div class="confidence-gauge-box">
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">
+                  Directional Upside Probability (10-Day Horizon)
+                </div>
+                <div class="prob-meter-value" id="ml-prob-value">68.5%</div>
+                <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 0.25rem;">
+                  Probability of ≥ 4–5% upside while maintaining Stop-Loss
+                </div>
+              </div>
+
+              <!-- Targets & Stop-Loss Levels -->
+              <div class="trade-targets-list">
+                <div class="trade-target-row">
+                  <span class="tt-label">Recommended Entry</span>
+                  <span class="tt-value" id="plan-entry" style="color: #ffffff;">Rs. 2,082.00</span>
+                </div>
+                <div class="trade-target-row">
+                  <span class="tt-label">Dynamic Stop-Loss (1.5x ATR)</span>
+                  <span class="tt-value" id="plan-stop" style="color: #fb7185;">Rs. 1,994.97 (-4.18%)</span>
+                </div>
+                <div class="trade-target-row">
+                  <span class="tt-label">Target 1 (Base Exit)</span>
+                  <span class="tt-value" id="plan-target1" style="color: #34d399;">Rs. 2,212.55 (+6.27%)</span>
+                </div>
+                <div class="trade-target-row">
+                  <span class="tt-label">Target 2 (Runner / Swing)</span>
+                  <span class="tt-value" id="plan-target2" style="color: #38bdf8;">Rs. 2,299.60 (+10.45%)</span>
+                </div>
+                <div class="trade-target-row">
+                  <span class="tt-label">Risk-to-Reward Ratio</span>
+                  <span class="tt-value" id="plan-rr" style="color: #38bdf8; font-weight: 800;">1 : 1.50</span>
+                </div>
+              </div>
+
+              <!-- Position Sizing Guide for User Capital -->
+              <div class="position-sizing-box">
+                <div style="font-weight: 700; color: #93c5fd; margin-bottom: 0.25rem;">
+                  🛡️ Risk Management (Rs. 1,00,000 Portfolio)
+                </div>
+                <div>Risk allocation per trade: <strong>Rs. 1,500 (1.5%)</strong></div>
+                <div>Recommended position: <strong id="plan-position-shares" style="color: #ffffff;">17 shares</strong></div>
+                <div>Capital required: <strong id="plan-capital-req" style="color: #ffffff;">Rs. 35,394</strong></div>
+              </div>
+            </div>
+
+            <!-- Safety Screen Checklist Card -->
+            <div class="glass-card">
+              <div style="font-size: 0.9rem; font-weight: 700; color: #ffffff; margin-bottom: 0.75rem;">
+                🛡️ Quantitative Safety Screen
+              </div>
+              <div style="display:flex; flex-direction:column; gap:0.5rem; font-size:0.8rem;">
+                <span class="filter-tag pass" id="check-trend">✓ Price > 50 & 200 EMA (Confirmed Uptrend)</span>
+                <span class="filter-tag pass" id="check-liquidity">✓ Turnover > Rs 10 Cr Liquidity</span>
+                <span class="filter-tag pass" id="check-confidence">✓ ML Probability > 60%</span>
+                <span class="filter-tag pass" id="check-momentum">✓ Momentum & Supertrend Bullish</span>
+              </div>
+            </div>
+
+            <!-- Top Predictive Indicators Driving This Stock -->
+            <div class="glass-card">
+              <div style="font-size: 0.9rem; font-weight: 700; color: #ffffff; margin-bottom: 0.5rem;">
+                📊 Top Predictive Drivers (LightGBM)
+              </div>
+              <div class="drivers-list" id="feature-drivers-list">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+
+            <!-- Valuation & Fundamental Overview -->
+            <div class="glass-card">
+              <div style="font-size: 0.9rem; font-weight: 700; color: #ffffff; margin-bottom: 0.75rem;">
+                🏢 Valuation & Fundamentals
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; font-size: 0.8rem;">
+                <div>
+                  <div style="color: var(--text-muted); font-size: 0.7rem;">P/E RATIO</div>
+                  <div style="font-weight: 700; font-family: var(--font-mono);" id="fund-pe">28.4</div>
+                </div>
+                <div>
+                  <div style="color: var(--text-muted); font-size: 0.7rem;">MARKET CAP</div>
+                  <div style="font-weight: 700; font-family: var(--font-mono);" id="fund-mcap">Rs. 11,20,000 Cr</div>
+                </div>
+                <div>
+                  <div style="color: var(--text-muted); font-size: 0.7rem;">52-WEEK HIGH</div>
+                  <div style="font-weight: 700; font-family: var(--font-mono);" id="fund-52h">Rs. 2,450.00</div>
+                </div>
+                <div>
+                  <div style="color: var(--text-muted); font-size: 0.7rem;">52-WEEK LOW</div>
+                  <div style="font-weight: 700; font-family: var(--font-mono);" id="fund-52l">Rs. 1,910.00</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         TAB 3: HISTORICAL STRATEGY BACKTEST
+         ========================================================================== -->
+    <section class="tab-content" id="tab-backtest">
+      
+      <!-- Backtest Controls Bar -->
+      <div class="glass-card" style="margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h2 class="section-title"><span>📈</span> Strategy Simulation on <span id="backtest-symbol-label" style="color: #38bdf8;">TCS.NS</span></h2>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
+              Walk-forward simulated execution with 1.5x ATR stop-loss, 2x target exit, and 10-day holding horizon.
+            </p>
+          </div>
+          <div style="display: flex; gap: 0.75rem; align-items: center;">
+            <div>
+              <label style="font-size: 0.75rem; color: var(--text-muted);">Capital (Rs.):</label>
+              <input type="number" id="backtest-capital" value="100000" style="padding: 0.45rem; background: var(--bg-input); border: 1px solid var(--border-medium); border-radius: var(--radius-sm); color: white; width: 110px; font-family: var(--font-mono);">
+            </div>
+            <div>
+              <label style="font-size: 0.75rem; color: var(--text-muted);">Prob Threshold:</label>
+              <input type="number" id="backtest-threshold" step="0.02" value="0.58" style="padding: 0.45rem; background: var(--bg-input); border: 1px solid var(--border-medium); border-radius: var(--radius-sm); color: white; width: 75px; font-family: var(--font-mono);">
+            </div>
+            <button class="btn-primary" id="btn-run-backtest" style="align-self: flex-end;">
+              <span>▶</span> Run Simulation
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Performance Statistics Grid -->
+      <div class="backtest-metrics-row">
+        <div class="metric-stat-box">
+          <div class="stat-title">Strategy Net Return</div>
+          <div class="stat-number" id="bt-stat-return" style="color: #10b981;">+18.4%</div>
+          <div class="stat-desc" id="bt-stat-bnh">Buy & Hold: +11.2%</div>
+        </div>
+        <div class="metric-stat-box">
+          <div class="stat-title">Win Rate</div>
+          <div class="stat-number" id="bt-stat-winrate" style="color: #38bdf8;">68.5%</div>
+          <div class="stat-desc">Profitable Closed Trades</div>
+        </div>
+        <div class="metric-stat-box">
+          <div class="stat-title">Profit Factor</div>
+          <div class="stat-number" id="bt-stat-factor" style="color: #f59e0b;">2.45</div>
+          <div class="stat-desc">Gross Profits / Losses</div>
+        </div>
+        <div class="metric-stat-box">
+          <div class="stat-title">Max Drawdown</div>
+          <div class="stat-number" id="bt-stat-drawdown" style="color: #fb7185;">-4.2%</div>
+          <div class="stat-desc">Controlled peak-to-trough</div>
+        </div>
+        <div class="metric-stat-box">
+          <div class="stat-title">Total Trades Executed</div>
+          <div class="stat-number" id="bt-stat-trades">14</div>
+          <div class="stat-desc">Filtered setups taken</div>
+        </div>
+      </div>
+
+      <!-- Equity Curve Canvas -->
+      <div class="glass-card" style="margin-bottom: 1.5rem;">
+        <h3 style="font-size: 1rem; color: #ffffff; margin-bottom: 1rem;">
+          Portfolio Equity Curve (Strategy vs. Benchmark)
+        </h3>
+        <div style="height: 350px;">
+          <canvas id="equity-curve-canvas"></canvas>
+        </div>
+      </div>
+
+      <!-- Executed Trades Log Table -->
+      <div class="glass-card">
+        <h3 style="font-size: 1rem; color: #ffffff; margin-bottom: 1rem;">
+          Historical Trade Log & Exits
+        </h3>
+        <div class="table-responsive">
+          <table class="screener-table">
+            <thead>
+              <tr>
+                <th>Entry Date</th>
+                <th>Exit Date</th>
+                <th>Entry Price</th>
+                <th>Exit Price</th>
+                <th>Shares</th>
+                <th>PnL (Rs.) & Return</th>
+                <th>Exit Reason</th>
+              </tr>
+            </thead>
+            <tbody id="bt-trades-table-body">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ==========================================================================
+         TAB 4: ARCHITECTURE & METHODOLOGY
+         ========================================================================== -->
+    <section class="tab-content" id="tab-architecture">
+      <div class="glass-card" style="margin-bottom: 1.5rem;">
+        <h2 class="section-title"><span>🧠</span> Quantitative Pipeline Architecture</h2>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem; line-height: 1.6;">
+          Forecasting exact absolute price movements usually fails due to financial market noise and non-stationarity.
+          Our architecture models <strong>directional upside probability</strong> subject to dynamic risk controls,
+          combining machine learning classification with rigorous rule-based safety screening.
+        </p>
+      </div>
+
+      <div class="arch-grid">
+        
+        <!-- Step 1 -->
+        <div class="arch-card">
+          <h3><span>1.</span> Reliable Market Ingestion</h3>
+          <p>
+            Connects to Indian Equities across NSE and BSE using calibrated <code>.NS</code> tickers. Daily OHLCV price bars and turnover are ingested and cached locally via persistent serialized containers to ensure sub-second response times and zero rate limits.
+          </p>
+          <div class="code-snippet">
+Tickers: RELIANCE.NS, TCS.NS, HDFCBANK.NS, INFY.NS...<br>
+Benchmark: ^NSEI (Nifty 50) & ^NSEBANK<br>
+Turnover: (Close * Volume) / 10,000,000 (Rs. Crores)
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="arch-card">
+          <h3><span>2.</span> Multi-Factor Feature Matrix</h3>
+          <p>
+            Transforms raw price action into 25+ orthogonal features across Momentum, Trend, Volatility, Volume Accumulation, and Market Regime:
+          </p>
+          <ul style="font-size: 0.8rem; color: var(--text-secondary); margin-left: 1.25rem; line-height: 1.6;">
+            <li><strong>Trend:</strong> EMA 20, 50, 200 ratios & 5-day slope</li>
+            <li><strong>Momentum:</strong> Wilder's RSI(14), Stochastic, MACD Histogram</li>
+            <li><strong>Volatility:</strong> Average True Range (ATR), Bollinger Bands (%B, Bandwidth)</li>
+            <li><strong>Volume:</strong> 20-Day Volume Ratio, On-Balance Volume (OBV) slope</li>
+            <li><strong>Regime:</strong> Nifty 50 20-day return & Bullish Regime flag</li>
+          </ul>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="arch-card">
+          <h3><span>3.</span> Triple-Barrier Target Labeling</h3>
+          <p>
+            Rather than raw regression, we formulate a classification problem with a 10-day holding horizon:
+          </p>
+          <div class="code-snippet">
+Target = 1 if:<br>
+  Max_High(+10 days) >= Entry + 4.0% AND<br>
+  Min_Low(+10 days)  >  Entry - 2.5%<br>
+Target = 0 otherwise
+          </div>
+          <p style="margin-top: 0.5rem;">
+            This prevents labeling setups as "Buy" if a premature stop-loss would have been triggered before reaching the target.
+          </p>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="arch-card">
+          <h3><span>4.</span> LightGBM Time-Series Split</h3>
+          <p>
+            Trained using strict <strong>Walk-Forward Chronological Validation</strong> (80% train on past data, 20% test on recent out-of-sample data). Random shuffling is strictly disallowed to prevent future lookahead leakage.
+          </p>
+          <div style="margin-top: 0.75rem; background: rgba(0,0,0,0.3); padding: 0.75rem; border-radius: var(--radius-sm); font-size: 0.8rem;">
+            <div>Accuracy: <strong id="diag-accuracy" style="color: #38bdf8;">--</strong></div>
+            <div>Precision: <strong id="diag-precision" style="color: #34d399;">--</strong></div>
+            <div>ROC-AUC: <strong id="diag-roc-auc" style="color: #fbbf24;">--</strong></div>
+            <div>Train Samples: <strong id="diag-train-samples">--</strong> | Test Samples: <strong id="diag-test-samples">--</strong></div>
+          </div>
+          <div style="margin-top: 0.75rem; display: flex; align-items: center; gap: 0.75rem;">
+            <button class="btn-primary" id="btn-retrain-model" style="padding: 0.4rem 0.8rem; font-size: 0.78rem;">
+              <span>⟳</span> Retrain Model
+            </button>
+            <span id="retrain-status" style="font-size: 0.75rem; color: var(--text-muted);"></span>
+          </div>
+        </div>
+
+        <!-- Step 5 -->
+        <div class="arch-card">
+          <h3><span>5.</span> Rule Engine & Safety Screen</h3>
+          <p>
+            Raw ML probability must pass four deterministic safety rules before receiving a Buy recommendation:
+          </p>
+          <ul style="font-size: 0.8rem; color: var(--text-secondary); margin-left: 1.25rem; line-height: 1.6;">
+            <li><strong>Trend Filter:</strong> Price > 50-day EMA and Price > 200-day EMA</li>
+            <li><strong>Liquidity:</strong> Average 20-day turnover >= Rs. 10–20 Crore</li>
+            <li><strong>Model Conviction:</strong> LightGBM probability >= 60%</li>
+            <li><strong>Risk:Reward:</strong> Target / Stop-Loss ratio >= 1.50</li>
+          </ul>
+        </div>
+
+        <!-- Step 6 -->
+        <div class="arch-card">
+          <h3><span>6.</span> Actionable Trade Execution</h3>
+          <p>
+            Calculates dynamic entry, ATR stop-loss (1.5x ATR below entry), dual profit targets, and mathematically sound position sizing for any portfolio size (defaulting to Rs. 1,00,000 risking max 1.5%).
+          </p>
+        </div>
+
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Application Logic Scripts -->
+  <script src="/static/js/charts.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
