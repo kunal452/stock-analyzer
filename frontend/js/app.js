@@ -267,8 +267,12 @@ function switchTab(tabId) {
 }
 
 // ==========================================================================
+// ==========================================================================
 // DAILY STATUS & MARKET REGIME
 // ==========================================================================
+let wasScanUpdating = false;
+let dailyScanPollTimer = null;
+
 async function fetchDailyStatus() {
     try {
         const res = await fetch(`${API_BASE}/api/daily-status`);
@@ -283,13 +287,23 @@ async function fetchDailyStatus() {
         }
 
         // Toggle button loading state if update is actively running
-        if (data.is_updating && el.btnRunDailyUpdate) {
-            el.btnRunDailyUpdate.disabled = true;
-            el.btnRunDailyUpdate.innerHTML = `<span class="spinner" style="width:14px;height:14px;"></span> Updating...`;
-        } else if (el.btnRunDailyUpdate && el.btnRunDailyUpdate.disabled) {
-            el.btnRunDailyUpdate.disabled = false;
-            el.btnRunDailyUpdate.innerHTML = `<span>⚡</span> Run Daily Scan Now`;
+        if (data.is_updating) {
+            if (el.btnRunDailyUpdate) {
+                el.btnRunDailyUpdate.disabled = true;
+                el.btnRunDailyUpdate.innerHTML = `<span class="spinner" style="width:14px;height:14px;"></span> Scanning Market...`;
+            }
+        } else {
+            if (el.btnRunDailyUpdate && el.btnRunDailyUpdate.disabled) {
+                el.btnRunDailyUpdate.disabled = false;
+                el.btnRunDailyUpdate.innerHTML = `<span>⚡</span> Run Daily Scan Now`;
+            }
+            // Auto-refresh recommendations if scan just completed
+            if (wasScanUpdating) {
+                await fetchDailyRecommendations();
+                await loadScreenerData();
+            }
         }
+        wasScanUpdating = data.is_updating;
     } catch (err) {
         console.warn("Could not fetch daily status:", err);
     }
@@ -330,46 +344,64 @@ async function fetchMarketOverview() {
 // ==========================================================================
 // ⭐ DAILY INVESTMENT SUGGESTIONS
 // ==========================================================================
+let isFetchingDailyRecs = false;
+
 async function fetchDailyRecommendations() {
+    if (isFetchingDailyRecs) return;
+    isFetchingDailyRecs = true;
+
     if (el.dailyLoader) el.dailyLoader.style.display = "flex";
-    if (el.dailySuggestionsContainer) el.dailySuggestionsContainer.innerHTML = "";
 
     try {
         const res = await fetch(`${API_BASE}/api/daily-recommendations?capital=${state.userCapital}`);
         if (!res.ok) throw new Error("Failed to load daily recommendations");
         const data = await res.json();
-        state.dailyData = data;
 
-        // Update timestamps and summary
-        if (el.dailyScanTimestamp) {
-            el.dailyScanTimestamp.innerText = `Updated: ${data.updated_at || "Today"}`;
-        }
-        if (el.dailySummaryText && data.investment_suggestions) {
-            el.dailySummaryText.innerText = data.investment_suggestions.summary || "High-conviction investment picks generated for today.";
-        }
+        if (data && data.investment_suggestions) {
+            state.dailyData = data;
 
-        renderDailySuggestions();
+            // Update timestamps and summary
+            if (el.dailyScanTimestamp) {
+                el.dailyScanTimestamp.innerText = `Updated: ${data.updated_at || "Today"}`;
+            }
+            if (el.dailySummaryText && data.investment_suggestions) {
+                el.dailySummaryText.innerText = data.investment_suggestions.summary || "High-conviction investment picks generated for today.";
+            }
+
+            renderDailySuggestions();
+        } else if (data && (data.status === "already_updating" || data.status === "already_running")) {
+            startDailyScanPolling();
+        }
     } catch (err) {
         console.error("Daily suggestions error:", err);
-        if (el.dailySuggestionsContainer) {
+        if (el.dailySuggestionsContainer && (!state.dailyData || !state.dailyData.investment_suggestions)) {
             el.dailySuggestionsContainer.innerHTML = `
                 <div style="grid-column: 1/-1; text-align: center; padding: 2.5rem; color: #fb7185;">
-                    Could not load daily investment recommendations. Click "Run Daily Scan Now" above to generate fresh picks.
+                    Could not load daily recommendations. <button class="btn-primary" style="margin-left: 0.5rem; padding: 0.35rem 0.8rem;" onclick="fetchDailyRecommendations()">Retry</button>
                 </div>
             `;
         }
     } finally {
+        isFetchingDailyRecs = false;
         if (el.dailyLoader) el.dailyLoader.style.display = "none";
     }
 }
 
 function renderDailySuggestions() {
-    if (!el.dailySuggestionsContainer || !state.dailyData) return;
-    el.dailySuggestionsContainer.innerHTML = "";
+    if (!el.dailySuggestionsContainer) return;
+
+    if (!state.dailyData || !state.dailyData.investment_suggestions) {
+        el.dailySuggestionsContainer.innerHTML = `
+            <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-muted);">
+                <div class="spinner" style="margin: 0 auto 0.75rem auto; width: 24px; height: 24px;"></div>
+                <div>Loading automated daily market scan and investment thesis...</div>
+            </div>
+        `;
+        fetchDailyRecommendations();
+        return;
+    }
 
     const sugg = state.dailyData.investment_suggestions;
-    if (!sugg) return;
-
     let items = [];
     if (state.activeSuggestionFilter === "compounders") {
         items = sugg.long_term_compounders || [];
@@ -381,10 +413,17 @@ function renderDailySuggestions() {
         items = sugg.top_overall_recommendations || [];
     }
 
+    el.dailySuggestionsContainer.innerHTML = "";
+
     if (!items || items.length === 0) {
         el.dailySuggestionsContainer.innerHTML = `
             <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-muted);">
-                No stocks currently match the "${state.activeSuggestionFilter}" filter. Market may be consolidating. Try selecting "All Top Picks" or re-running the daily scan.
+                <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">🔍</div>
+                <div>No stocks currently match the "${state.activeSuggestionFilter}" filter.</div>
+                <div style="margin-top: 0.85rem; display: flex; gap: 0.5rem; justify-content: center;">
+                    <button class="filter-pill active" onclick="setDailyFilter('all')">View All Top Picks</button>
+                    <button class="filter-pill" onclick="setDailyFilter('swings')">View Swings</button>
+                </div>
             </div>
         `;
         return;
@@ -402,12 +441,12 @@ function renderDailySuggestions() {
         const totalInvest = Math.round(shares * cmp);
 
         const card = document.createElement("div");
-        const actionClass = stock.action.toLowerCase().replace(/\s+/g, "-");
+        const actionClass = (stock.action || "BUY").toLowerCase().replace(/\s+/g, "-");
         card.className = `suggestion-card ${actionClass}`;
 
         let badgeClass = "sugg-badge-strong-buy";
-        if (stock.action.includes("ACCUMULATE")) badgeClass = "sugg-badge-accumulate";
-        else if (stock.action.includes("SWING")) badgeClass = "sugg-badge-swing";
+        if (stock.action && stock.action.includes("ACCUMULATE")) badgeClass = "sugg-badge-accumulate";
+        else if (stock.action && stock.action.includes("SWING")) badgeClass = "sugg-badge-swing";
 
         card.innerHTML = `
             <div>
@@ -423,7 +462,7 @@ function renderDailySuggestions() {
                         <div class="sugg-sector">${stock.sector}</div>
                     </div>
                     <span class="sugg-badge-pill ${badgeClass}">
-                        ${stock.action}
+                        ${stock.action || "BUY"}
                     </span>
                 </div>
 
@@ -460,7 +499,7 @@ function renderDailySuggestions() {
                         <span>💡</span> Why Invest in ${stock.clean_symbol}?
                     </div>
                     <ul class="sugg-thesis-list">
-                        ${stock.thesis.map(t => `<li>${t}</li>`).join("")}
+                        ${(stock.thesis || []).map(t => `<li>${t}</li>`).join("")}
                     </ul>
                 </div>
             </div>
@@ -488,37 +527,80 @@ function renderDailySuggestions() {
     });
 }
 
+function startDailyScanPolling() {
+    if (dailyScanPollTimer) return;
+    dailyScanPollTimer = setInterval(async () => {
+        try {
+            const res = await fetch(`${API_BASE}/api/daily-status`);
+            if (!res.ok) return;
+            const data = await res.json();
+
+            if (el.dailyLastUpdated) el.dailyLastUpdated.innerText = data.last_updated_at;
+            if (el.dailyMarketStatus) el.dailyMarketStatus.innerText = data.market_status;
+
+            if (!data.is_updating) {
+                clearInterval(dailyScanPollTimer);
+                dailyScanPollTimer = null;
+                if (el.btnRunDailyUpdate) {
+                    el.btnRunDailyUpdate.disabled = false;
+                    el.btnRunDailyUpdate.innerHTML = `<span>⚡</span> Run Daily Scan Now`;
+                }
+                await fetchDailyRecommendations();
+                await loadScreenerData();
+            }
+        } catch (e) {
+            console.warn("Scan polling error:", e);
+        }
+    }, 2500);
+}
+
 async function triggerDailyScan() {
     if (el.btnRunDailyUpdate) {
         el.btnRunDailyUpdate.disabled = true;
         el.btnRunDailyUpdate.innerHTML = `<span class="spinner" style="width:14px;height:14px;"></span> Scanning Market...`;
     }
 
+    if (el.dailySuggestionsContainer && (!state.dailyData || !state.dailyData.investment_suggestions)) {
+        el.dailySuggestionsContainer.innerHTML = `
+            <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: #38bdf8;">
+                <span class="spinner" style="display:inline-block; margin-bottom: 0.75rem; width: 24px; height: 24px;"></span>
+                <div style="font-weight:600; font-size:1.05rem;">Daily Market Scan in Progress...</div>
+                <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.35rem;">
+                    Analyzing NSE equities with 50/200 EMA structure and LightGBM models. Results will appear automatically in seconds.
+                </div>
+            </div>
+        `;
+    }
+
     try {
-        const res = await fetch(`${API_BASE}/api/daily-recommendations/refresh?universe=${state.screenerUniverse}&async_mode=false`, {
+        const res = await fetch(`${API_BASE}/api/daily-recommendations/refresh?universe=${state.screenerUniverse}&async_mode=true`, {
             method: "POST"
         });
         if (!res.ok) throw new Error("Daily scan request failed");
-        const data = await res.json();
-        state.dailyData = data;
-        state.screenerData = data;
-
-        fetchDailyStatus();
-        renderDailySuggestions();
-        renderTopBuyCards(data.top_buy_candidates);
-        renderScreenerTable();
-
-        alert("✓ Daily market scan complete! Fresh investment recommendations are now live.");
+        startDailyScanPolling();
     } catch (err) {
         console.error("Daily update error:", err);
-        alert(`Daily scan error: ${err.message}`);
-    } finally {
         if (el.btnRunDailyUpdate) {
             el.btnRunDailyUpdate.disabled = false;
             el.btnRunDailyUpdate.innerHTML = `<span>⚡</span> Run Daily Scan Now`;
         }
     }
 }
+
+// Global Helpers for Interactive Cards & Filter Pills
+window.setDailyFilter = function(filterKey) {
+    state.activeSuggestionFilter = filterKey;
+    el.suggestionFilterPills.forEach(pill => {
+        pill.classList.toggle("active", pill.getAttribute("data-sugg-filter") === filterKey);
+    });
+    renderDailySuggestions();
+};
+
+window.inspectStock = function(symbol) {
+    if (el.stockSearchInput) el.stockSearchInput.value = symbol;
+    switchTab("analyzer");
+    analyzeStock(symbol);
+};
 
 // ==========================================================================
 // DYNAMIC SEARCH & AUTOCOMPLETE

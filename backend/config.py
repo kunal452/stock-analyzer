@@ -73,7 +73,7 @@ DEFAULT_NSE_STOCKS: List[Dict[str, str]] = [
     {"symbol": "DIVISLAB.NS", "name": "Divi's Laboratories", "sector": "Pharmaceuticals", "category": "large_cap"},
     {"symbol": "HEROMOTOCO.NS", "name": "Hero MotoCorp", "sector": "Automobile", "category": "large_cap"},
     {"symbol": "HINDALCO.NS", "name": "Hindalco Industries", "sector": "Metals & Mining", "category": "large_cap"},
-    {"symbol": "LTIM.NS", "name": "LTIMindtree", "sector": "Information Technology", "category": "large_cap"},
+    {"symbol": "COFORGE.NS", "name": "Coforge Limited", "sector": "Information Technology", "category": "large_cap"},
     {"symbol": "SHRIRAMFIN.NS", "name": "Shriram Finance", "sector": "NBFC / Financials", "category": "large_cap"},
     {"symbol": "TRENT.NS", "name": "Trent Limited", "sector": "Retail / Consumer", "category": "large_cap"},
     {"symbol": "BEL.NS", "name": "Bharat Electronics", "sector": "Defense Electronics", "category": "large_cap"},
